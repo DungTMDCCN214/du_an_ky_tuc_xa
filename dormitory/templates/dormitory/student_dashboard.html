@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Sinh Viên{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>🎓 Dashboard Sinh Viên</h2>
+
+            <!-- Thông báo -->
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Xin chào, {{ user.username }}!</h5>
+
+                    <!-- Thông tin sinh viên -->
+                    {% if student %}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p><strong>Mã SV:</strong> {{ student.student_id }}</p>
+                            <p><strong>Trường:</strong> {{ student.university }}</p>
+                            <p><strong>Khoa:</strong> {{ student.faculty }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Khóa:</strong> {{ student.course }}</p>
+                            <p><strong>Họ tên:</strong> {{ student.full_name|default:user.get_full_name }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <h6>⚠️ CHƯA HOÀN THIỆN HỒ SƠ</h6>
+                        <p>Vui lòng hoàn thiện thông tin sinh viên để sử dụng đầy đủ tính năng.</p>
+                        <a href="{% url 'complete_profile' %}" class="btn btn-warning btn-sm">Hoàn thiện hồ sơ</a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Hợp đồng hiện tại -->
+                    {% if current_contract %}
+                    <div class="alert alert-success">
+                        <h6>✅ HỢP ĐỒNG HIỆN TẠI</h6>
+                        <p><strong>Phòng:</strong> {{ current_contract.room.room_number }} - {{ current_contract.room.building.name }}</p>
+                        <p><strong>Loại phòng:</strong> {{ current_contract.room.room_type.name }}</p>
+                        <p><strong>Ngày bắt đầu:</strong> {{ current_contract.start_date }}</p>
+                        <p><strong>Ngày kết thúc:</strong> {{ current_contract.end_date }}</p>
+                        <p><strong>Tiền cọc:</strong> {{ current_contract.deposit|floatformat:0 }} VNĐ</p>
+                        <p><strong>Trạng thái:</strong> <span class="badge bg-success">{{ current_contract.get_status_display }}</span></p>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <h6>⚠️ CHƯA CÓ HỢP ĐỒNG</h6>
+                        <p>Bạn chưa có hợp đồng phòng nào. Hãy đăng ký phòng ngay!</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Menu chức năng -->
+                    <div class="row mt-4">
+                        <div class="col-md-3">
+                            <div class="card text-white bg-primary mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">🏠 Phòng Trống</h5>
+                                    <p class="card-text">Đăng ký phòng mới</p>
+                                    <a href="#available-rooms" class="btn btn-light btn-sm">Xem ngay</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-white bg-success mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">📄 Hợp đồng</h5>
+                                    <p class="card-text">Thông tin hợp đồng</p>
+                                    {% if current_contract %}
+                                    <a href="#" class="btn btn-light btn-sm">Chi tiết</a>
+                                    {% else %}
+                                    <button class="btn btn-light btn-sm" disabled>Chi tiết</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-white bg-info mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">💰 Thanh toán</h5>
+                                    <p class="card-text">Thanh toán trực tuyến</p>
+                                    {% if current_contract %}
+                                    <a href="{% url 'student_payments' %}" class="btn btn-light btn-sm">Thanh toán ngay</a>
+                                    {% else %}
+                                    <button class="btn btn-light btn-sm" disabled>Chưa có HĐ</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-white bg-warning mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">👤 Hồ sơ</h5>
+                                    <p class="card-text">Cập nhật thông tin</p>
+                                    <a href="{% url 'complete_profile' %}" class="btn btn-light btn-sm">Chỉnh sửa</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danh sách phòng trống -->
+                    <div id="available-rooms" class="mt-5">
+                        <h4>🏠 Phòng Trống Hiện Có</h4>
+                        
+                        {% if not student %}
+                        <div class="alert alert-danger">
+                            <strong>Vui lòng hoàn thiện hồ sơ sinh viên trước khi đăng ký phòng!</strong>
+                        </div>
+                        {% elif available_rooms %}
+                        <div class="row">
+                            {% for room in available_rooms %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-header bg-light">
+                                        <h6 class="card-title mb-0">Phòng {{ room.room_number }}</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text small">
+                                            <strong>🏢 Tòa:</strong> {{ room.building.name }}<br>
+                                            <strong>📦 Loại:</strong> {{ room.room_type.name }}<br>
+                                            <strong>👥 Sức chứa:</strong> {{ room.room_type.capacity }} người<br>
+                                            <strong>🛏️ Đang ở:</strong> {{ room.current_occupancy }} người<br>
+                                            <strong>✅ Còn trống:</strong> 
+                                                {% if room.current_occupancy < room.room_type.capacity %}
+                                                <span class="text-success fw-bold">{{ room.get_available_slots }} chỗ</span>
+                                                {% else %}
+                                                <span class="text-danger">Đã đầy</span>
+                                                {% endif %}
+                                            <br>
+                                            <strong>💰 Giá:</strong> <span class="text-primary fw-bold">{{ room.room_type.price_per_month|floatformat:0 }} VNĐ/tháng</span><br>
+                                            <strong>🏗️ Tầng:</strong> {{ room.floor }}
+                                        </p>
+                                    </div>
+                                    <div class="card-footer bg-white">
+                                        {% if not student %}
+                                            <button class="btn btn-secondary btn-sm w-100" disabled>Hoàn thiện hồ sơ</button>
+                                        {% elif current_contract %}
+                                            <button class="btn btn-secondary btn-sm w-100" disabled>Đã có phòng</button>
+                                        {% elif room.current_occupancy >= room.room_type.capacity %}
+                                            <button class="btn btn-danger btn-sm w-100" disabled>Đã đầy</button>
+                                        {% else %}
+                                            <a href="{% url 'room_booking' room.id %}" class="btn btn-primary btn-sm w-100">Đăng ký ngay</a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <strong>Hiện không có phòng trống nào.</strong> Vui lòng quay lại sau.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Thống kê cá nhân -->
+                    {% if current_contract %}
+                    <div class="row mt-5">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4>📊 Thống kê Cá nhân</h4>
+                                <a href="{% url 'student_payments' %}" class="btn btn-warning">
+                                    <i class="fas fa-credit-card"></i> Thanh Toán Trực Tuyến
+                                </a>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-primary">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">{{ current_contract.room.room_type.price_per_month|floatformat:0 }}</h5>
+                                            <p class="card-text">VNĐ/tháng</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-success">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">{{ current_contract.deposit|floatformat:0 }}</h5>
+                                            <p class="card-text">Tiền cọc</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-info">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">{{ current_contract.room.current_occupancy }}/{{ current_contract.room.room_type.capacity }}</h5>
+                                            <p class="card-text">Số người trong phòng</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-warning">
+                                        <div class="card-body text-center">
+                                            <h5 class="card-title">{% now "d/m/Y" %}</h5>
+                                            <p class="card-text">Hôm nay</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
