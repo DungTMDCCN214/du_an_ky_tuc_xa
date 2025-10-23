@@ -556,7 +556,7 @@ def export_students_excel(request):
     wb.save(response)
     return response
 
-# dormitory/views.py
+
 @login_required
 def room_booking(request, room_id):
     """Đăng ký phòng cho sinh viên"""
@@ -565,12 +565,17 @@ def room_booking(request, room_id):
         return redirect('home')
     
     room = get_object_or_404(Room, pk=room_id)
-    student = request.user.student
     
-    # KIỂM TRA PHÒNG CÒN CHỖ TRỐNG KHÔNG
+    # KIỂM TRA KỸ HƠN
     if not room.is_available():
         messages.error(request, f"Phòng {room.room_number} đã đầy!")
         return redirect('student_dashboard')
+    
+    try:
+        student = request.user.student
+    except Student.DoesNotExist:
+        messages.error(request, "Vui lòng hoàn thiện hồ sơ sinh viên trước!")
+        return redirect('complete_profile')
     
     # Kiểm tra sinh viên đã có hợp đồng active chưa
     existing_contract = Contract.objects.filter(student=student, status='active').first()
@@ -579,36 +584,50 @@ def room_booking(request, room_id):
         return redirect('student_dashboard')
     
     if request.method == 'POST':
-        # Tạo hợp đồng mới
+        from django.db import transaction
         from datetime import date, timedelta
+        from .signals import notify_room_booking_success  # THÊM IMPORT
         
-        contract = Contract.objects.create(
-            contract_number=f"CT{date.today().strftime('%Y%m%d')}{student.student_id}",
-            student=student,
-            room=room,
-            start_date=date.today(),
-            end_date=date.today() + timedelta(days=365),  # 1 năm
-            deposit=room.room_type.price_per_month,  # Cọc 1 tháng
-            status='active'
-        )
-        
-        # CẬP NHẬT SỐ LƯỢNG NGƯỜI TRONG PHÒNG
-        room.current_occupancy += 1
-        
-        # KIỂM TRA NẾU PHÒNG ĐÃ ĐẦY THÌ CẬP NHẬT STATUS
-        if room.current_occupancy >= room.room_type.capacity:
-            room.status = 'occupied'
-        
-        room.save()
-        
-        messages.success(request, f"✅ Đã đăng ký thành công phòng {room.room_number}!")
-        return redirect('student_dashboard')
+        try:
+            with transaction.atomic():
+                # Tạo hợp đồng mới
+                contract = Contract.objects.create(
+                    contract_number=f"CT{date.today().strftime('%Y%m%d')}{student.student_id}",
+                    student=student,
+                    room=room,
+                    start_date=date.today(),
+                    end_date=date.today() + timedelta(days=365),
+                    deposit=room.room_type.price_per_month,
+                    status='active'
+                )
+                
+                # CẬP NHẬT SỐ LƯỢNG
+                from django.db.models import F
+                Room.objects.filter(pk=room.pk).update(
+                    current_occupancy=F('current_occupancy') + 1
+                )
+                
+                # Lấy lại room đã update
+                room.refresh_from_db()
+                
+                # KIỂM TRA NẾU PHÒNG ĐÃ ĐẦY
+                if room.current_occupancy >= room.room_type.capacity:
+                    room.status = 'occupied'
+                    room.save()
+                
+                # GỌI SIGNAL ĐỂ TẠO THÔNG BÁO - THÊM DÒNG NÀY
+                notify_room_booking_success(student, room)
+                
+                messages.success(request, f"✅ Đã đăng ký thành công phòng {room.room_number}!")
+                return redirect('student_dashboard')
+                
+        except Exception as e:
+            messages.error(request, f"❌ Có lỗi xảy ra: {str(e)}")
     
     return render(request, 'dormitory/room_booking.html', {
         'room': room,
         'student': student
     })
-
 from django.contrib.auth import login
 from .forms import StudentRegistrationForm
 
@@ -655,3 +674,104 @@ def student_register(request):
         form = StudentRegistrationForm()
     
     return render(request, 'dormitory/student_register.html', {'form': form})
+
+
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from .models import Notification
+from .utils import get_unread_count, get_recent_notifications, mark_all_as_read
+
+
+
+@login_required
+def notification_list(request):
+    """
+    Danh sách tất cả thông báo của user
+    """
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    
+    # Phân trang - 20 thông báo/trang
+    paginator = Paginator(notifications, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'unread_count': get_unread_count(request.user),
+        'active_tab': 'notifications'
+    }
+    return render(request, 'dormitory/notification_list.html', context)
+
+@login_required
+def notification_mark_read(request, notification_id):
+    """
+    Đánh dấu một thông báo là đã đọc
+    """
+    notification = get_object_or_404(
+        Notification, 
+        pk=notification_id, 
+        user=request.user  # Chỉ cho phép user đánh dấu thông báo của chính họ
+    )
+    
+    notification.mark_as_read()
+    
+    # Nếu là AJAX request, trả về JSON
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'unread_count': get_unread_count(request.user)
+        })
+    
+    messages.success(request, f"Đã đánh dấu thông báo '{notification.title}' là đã đọc!")
+    return redirect('notification_list')
+
+@login_required
+def notification_mark_all_read(request):
+    """
+    Đánh dấu TẤT CẢ thông báo là đã đọc
+    """
+    updated_count = mark_all_as_read(request.user)
+    
+    # Nếu là AJAX request, trả về JSON
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'updated_count': updated_count,
+            'unread_count': 0
+        })
+    
+    messages.success(request, f"Đã đánh dấu {updated_count} thông báo là đã đọc!")
+    return redirect('notification_list')
+
+@login_required
+def notification_count_api(request):
+    """
+    API trả về số thông báo chưa đọc (cho AJAX polling)
+    """
+    count = get_unread_count(request.user)
+    return JsonResponse({'unread_count': count})
+
+@login_required
+def notification_dropdown_api(request):
+    """
+    API trả về danh sách thông báo gần đây cho dropdown
+    """
+    notifications = get_recent_notifications(request.user, limit=5)
+    
+    notifications_data = []
+    for notification in notifications:
+        notifications_data.append({
+            'id': notification.id,
+            'title': notification.title,
+            'message': notification.message,
+            'type': notification.notification_type,
+            'icon': notification.get_icon(),
+            'is_read': notification.is_read,
+            'created_at': notification.created_at.strftime('%H:%M %d/%m'),
+            'related_url': notification.related_url,
+        })
+    
+    return JsonResponse({
+        'notifications': notifications_data,
+        'unread_count': get_unread_count(request.user)
+    })

@@ -52,4 +52,11 @@ urlpatterns = [
     path('accounts/login/', auth_views.LoginView.as_view(template_name='dormitory/login.html'), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
     path('complete-profile/', views.complete_profile, name='complete_profile'),
+
+
+    path('notifications/', views.notification_list, name='notification_list'),
+    path('notifications/<int:notification_id>/read/', views.notification_mark_read, name='notification_mark_read'),
+    path('notifications/mark-all-read/', views.notification_mark_all_read, name='notification_mark_all_read'),
+    path('api/notifications/count/', views.notification_count_api, name='notification_count_api'),
+    path('api/notifications/dropdown/', views.notification_dropdown_api, name='notification_dropdown_api'),
 ]

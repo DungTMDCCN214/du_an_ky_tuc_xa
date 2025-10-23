@@ -28,3 +28,22 @@ class ContractAdmin(admin.ModelAdmin):
     list_display = ['contract_number', 'student', 'room', 'start_date', 'end_date', 'status']
     list_filter = ['status', 'start_date']
     search_fields = ['contract_number', 'student__student_id']
+
+# dormitory/admin.py - THÊM CUỐI FILE
+from .models import Notification
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ['title', 'user', 'notification_type', 'is_read', 'created_at']
+    list_filter = ['notification_type', 'is_read', 'created_at']
+    search_fields = ['title', 'message', 'user__username']
+    readonly_fields = ['created_at']
+    list_editable = ['is_read']
+    
+    def mark_as_read(self, request, queryset):
+        """Action: Đánh dấu đã đọc"""
+        updated = queryset.update(is_read=True)
+        self.message_user(request, f'Đã đánh dấu {updated} thông báo là đã đọc')
+    mark_as_read.short_description = "Đánh dấu đã đọc"
+    
+    actions = [mark_as_read]
