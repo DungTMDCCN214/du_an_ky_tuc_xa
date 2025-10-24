@@ -20,7 +20,8 @@
                         <p><strong>Hạn thanh toán:</strong> {{ payment.due_date|date:"d/m/Y" }}</p>
                     </div>
 
-                    <form method="post" action="{% url 'confirm_payment' payment.id %}">
+                    <form method="post" action="{% url 'select_payment_method' payment.id %}">
+
                         {% csrf_token %}
                         
                         <h5 class="mb-3">Chọn phương thức thanh toán:</h5>

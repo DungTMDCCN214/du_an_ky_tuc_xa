@@ -17,6 +17,8 @@ urlpatterns = [
     
     # URLs MỚI cho thanh toán chi tiết
     path('student/gateway/<int:payment_id>/', views.payment_gateway, name='payment_gateway'),
-    path('student/confirm/<int:payment_id>/', views.confirm_payment, name='confirm_payment'),
-    path('student/generate-qr/<int:payment_id>/', views.generate_qr_payment, name='generate_qr'),
+    path('student/select/<int:payment_id>/', views.select_payment_method, name='select_payment_method'),
+    path('student/confirm/<int:payment_id>/', views.confirm_payment, name='confirm_payment'),  
+    #path('student/generate-qr/<int:payment_id>/', views.generate_qr_payment, name='generate_qr'),
+
 ]

@@ -226,12 +226,22 @@ def payment_gateway(request, payment_id):
     
     method = request.GET.get('method', 'bank_transfer')
     
+    bank_info = {
+        "bank_name": "Ngân hàng @@@",
+        "account_name": "KTX  Học viện Công nghệ Bưu chính Viễn thông",
+        "account_number": "0123456789",
+        "branch": "Chi nhánh Hà Nội",
+        "transfer_content": f"Thanh toan hoa don #{payment.id} - {payment.contract.room.room_number}",
+    }
+
     context = {
         'payment': payment,
         'method': method,
-        'method_display': dict(Payment.PAYMENT_METHODS).get(method, method)
+        'method_display': dict(Payment.PAYMENT_METHODS).get(method, method),
+        'bank_info': bank_info,
     }
     return render(request, 'payment/payment_gateway.html', context)
+
 
 @login_required
 def confirm_payment(request, payment_id):
@@ -247,18 +257,79 @@ def confirm_payment(request, payment_id):
     
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method')
-        
-        # Cập nhật trạng thái thanh toán
-        payment.payment_method = payment_method
-        payment.status = 'paid'
-        payment.paid_date = timezone.now().date()
-        payment.transaction_id = f"TX{timezone.now().strftime('%Y%m%d%H%M%S')}"
-        payment.save()
-        
-        messages.success(request, f"✅ Thanh toán thành công {payment.amount:,.0f} VNĐ!")
-        return redirect('student_payments')
+
+    # ✅ Xử lý theo từng phương thức
+        if payment_method == 'bank_transfer':
+            payment.payment_method = 'bank_transfer'
+            payment.status = 'pending'  # Chờ quản lý xác nhận
+            payment.paid_date = None
+            payment.transaction_id = f"BT{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            payment.save()
+            messages.info(request, "💳 Đã ghi nhận thông tin chuyển khoản. Quản lý sẽ xác nhận sau khi kiểm tra.")
+            return redirect('student_payments')
+
+        elif payment_method in ['momo', 'zalopay']:
+            payment.payment_method = payment_method
+            payment.status = 'paid'
+            payment.paid_date = timezone.now().date()
+            payment.transaction_id = f"TX{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            payment.save()
+            messages.success(request, f"✅ Thanh toán thành công qua {payment_method.capitalize()} {payment.amount:,.0f} VNĐ!")
+            return redirect('student_payments')
+
+        elif payment_method == 'cash':
+            # Tiền mặt sẽ xử lý ở select_payment_method -> chỉ phòng khi bị gửi lại
+            messages.info(request, "💵 Thanh toán tiền mặt đã được ghi nhận trước đó.")
+            return redirect('student_payments')
+
+        else:
+            return redirect('student_payments')
     else:
         return redirect('payment_gateway', payment_id=payment_id)
+
+
+from django.urls import reverse
+from django.utils.http import urlencode
+
+@login_required
+def select_payment_method(request, payment_id):
+    if request.user.user_type != 'student':
+        return redirect('home')
+
+    payment = get_object_or_404(Payment, id=payment_id, student__user=request.user)
+
+    if request.method != 'POST':
+        return redirect('payment_gateway', payment_id=payment_id)
+
+    method = request.POST.get('payment_method')
+
+    if method == 'cash':
+        messages.info(request, "Vui lòng đến văn phòng để hoàn tất thanh toán tiền mặt.")
+        url = reverse('payment_gateway', args=[payment.id]) + '?method=cash'
+        return redirect(url)
+
+    elif method == 'bank_transfer':
+        # Chuyển đến trang hiển thị thông tin chuyển khoản (bank account + hướng dẫn).
+        url = reverse('payment_gateway', args=[payment.id]) + '?' + urlencode({'method': 'bank_transfer'})
+        return redirect(url)
+
+    elif method == 'momo':
+        # Redirect đến trang mô phỏng / tạo link MoMo (trang này có thể tạo request đến MoMo)
+        url = reverse('payment_gateway', args=[payment.id]) + '?' + urlencode({'method': 'momo'})
+        return redirect(url)
+
+    elif method == 'zalopay':
+        url = reverse('payment_gateway', args=[payment.id]) + '?' + urlencode({'method': 'zalopay'})
+        return redirect(url)
+    else:
+        return redirect('process_payment', payment_id=payment.id)
+
+@login_required
+def payment_pending(request, payment_id):
+    payment = get_object_or_404(Payment, id=payment_id, student__user=request.user)
+    return render(request, 'payment/payment_pending.html', {'payment': payment})
+
+
 
 @login_required
 def generate_qr_payment(request, payment_id):
