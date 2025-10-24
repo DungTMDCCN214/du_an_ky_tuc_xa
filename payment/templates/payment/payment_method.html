@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Chọn Phương Thức Thanh Toán{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-credit-card me-2"></i>Chọn Phương Thức Thanh Toán</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Thông tin hóa đơn -->
+                    <div class="alert alert-info">
+                        <h5>Thông tin hóa đơn</h5>
+                        <p><strong>Mã hóa đơn:</strong> #{{ payment.id }}</p>
+                        <p><strong>Số tiền:</strong> {{ payment.amount|floatformat:0 }} VNĐ</p>
+                        <p><strong>Kỳ thanh toán:</strong> {{ payment.month }}/{{ payment.year }}</p>
+                        <p><strong>Hạn thanh toán:</strong> {{ payment.due_date|date:"d/m/Y" }}</p>
+                    </div>
+
+                    <form method="post" action="{% url 'confirm_payment' payment.id %}">
+                        {% csrf_token %}
+                        
+                        <h5 class="mb-3">Chọn phương thức thanh toán:</h5>
+                        
+                        <div class="payment-methods">
+                            <!-- Tiền mặt -->
+                            <div class="method-option mb-3">
+                                <input type="radio" name="payment_method" value="cash" id="cash" class="btn-check" required>
+                                <label class="btn btn-outline-primary w-100 p-3 text-start" for="cash">
+                                    <i class="fas fa-money-bill-wave me-2"></i>
+                                    <strong>Tiền mặt</strong>
+                                    <p class="mb-0 small">Thanh toán trực tiếp tại văn phòng</p>
+                                </label>
+                            </div>
+                            
+                            <!-- Chuyển khoản -->
+                            <div class="method-option mb-3">
+                                <input type="radio" name="payment_method" value="bank_transfer" id="bank_transfer" class="btn-check" required>
+                                <label class="btn btn-outline-primary w-100 p-3 text-start" for="bank_transfer">
+                                    <i class="fas fa-university me-2"></i>
+                                    <strong>Chuyển khoản ngân hàng</strong>
+                                    <p class="mb-0 small">Chuyển khoản qua ngân hàng</p>
+                                </label>
+                            </div>
+                            
+                            <!-- Ví MoMo -->
+                            <div class="method-option mb-3">
+                                <input type="radio" name="payment_method" value="momo" id="momo" class="btn-check" required>
+                                <label class="btn btn-outline-primary w-100 p-3 text-start" for="momo">
+                                    <i class="fas fa-mobile-alt me-2"></i>
+                                    <strong>Ví MoMo</strong>
+                                    <p class="mb-0 small">Thanh toán qua ví điện tử MoMo</p>
+                                </label>
+                            </div>
+                            
+                            <!-- ZaloPay -->
+                            <div class="method-option mb-3">
+                                <input type="radio" name="payment_method" value="zalopay" id="zalopay" class="btn-check" required>
+                                <label class="btn btn-outline-primary w-100 p-3 text-start" for="zalopay">
+                                    <i class="fas fa-wallet me-2"></i>
+                                    <strong>ZaloPay</strong>
+                                    <p class="mb-0 small">Thanh toán qua ví ZaloPay</p>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check-circle me-2"></i>
+                                Tiếp tục thanh toán
+                            </button>
+                            <a href="{% url 'student_payments' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
