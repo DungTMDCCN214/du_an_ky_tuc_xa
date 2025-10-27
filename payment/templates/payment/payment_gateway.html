@@ -1,0 +1,136 @@
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Thanh toán - {{ method_display }}{% endblock %}
+
+{% block content %}
+<style>
+  .momo-theme {
+    border-top: 5px solid #a50064;
+  }
+  .zalopay-theme {
+    border-top: 5px solid #00b4d8;
+  }
+  .bank-theme {
+    border-top: 5px solid #007bff;
+  }
+  .cash-theme {
+    border-top: 5px solid #28a745;
+  }
+  .qr-box {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    display: inline-block;
+  }
+</style>
+
+<div class="container mt-4">
+  <div class="card shadow-sm
+      {% if method == 'momo' %} momo-theme
+      {% elif method == 'zalopay' %} zalopay-theme
+      {% elif method == 'cash' %} cash-theme
+      {% else %} bank-theme {% endif %}">
+      
+    <div class="card-header text-white
+        {% if method == 'momo' %} bg-danger
+        {% elif method == 'zalopay' %} bg-info
+        {% elif method == 'cash' %} bg-success
+        {% else %} bg-primary {% endif %}">
+      <h5 class="mb-0 d-flex align-items-center justify-content-center">
+        {% if method == 'bank_transfer' %}
+          <i class="fas fa-university me-2"></i> Thanh toán qua Ngân hàng
+        {% elif method == 'momo' %}
+          <img src="https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png" alt="MoMo" height="28" class="me-2"> Ví MoMo
+        {% elif method == 'zalopay' %}
+          <img src="{% static 'images/ZaloPay.svg' %}" alt="ZaloPay" height="28" class="me-2"> Ví ZaloPay
+        {% elif method == 'cash' %}
+          <i class="fas fa-money-bill-wave me-2"></i> Thanh toán tiền mặt
+        {% endif %}
+      </h5>
+    </div>
+
+    <div class="card-body text-center">
+      <p><strong>Mã hóa đơn:</strong> #{{ payment.id }}</p>
+      <p><strong>Số tiền cần thanh toán:</strong> {{ payment.amount|floatformat:0 }} VNĐ</p>
+      <hr>
+
+      {% if method == 'cash' %}
+        <div class="alert alert-info text-start">
+          <h5>Hướng dẫn thanh toán tiền mặt</h5>
+          <p>Vui lòng đến <strong>Phòng Kế Toán - Ký túc xá Học viện Công nghệ Bưu chính Viễn thông</strong> để nộp tiền trực tiếp.</p>
+          <p><strong>Thời gian làm việc:</strong> 8h00 - 17h00 (Thứ 2 - Thứ 6)</p>
+        </div>
+
+      {% else %}
+        <!-- QR Code -->
+        <div class="qr-box mb-3">
+          {% if method == 'momo' %}
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=Thanh%20toan%20MoMo%20cho%20hoa%20don%20{{payment.id}}%20-%20{{payment.amount}}%20VND" 
+                alt="QR MoMo" width="220" height="220" class="rounded shadow-sm">
+          {% elif method == 'zalopay' %}
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=Thanh%20toan%20ZaloPay%20cho%20hoa%20don%20{{payment.id}}%20-%20{{payment.amount}}%20VND" 
+                alt="QR ZaloPay" width="220" height="220" class="rounded shadow-sm">
+          {% else %}
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=Chuyen%20khoan%20cho%20hoa%20don%20{{payment.id}}%20-%20{{payment.amount}}%20VND"
+                alt="QR Ngân hàng" width="220" height="220" class="rounded shadow-sm">
+          {% endif %}
+        </div>
+        <p class="text-muted small">Quét mã QR bằng ứng dụng để thanh toán nhanh</p>
+
+        <!-- Thông tin tài khoản ngân hàng -->
+        <div class="text-start mt-4">
+          <h5>Thông tin tài khoản nhận tiền</h5>
+          <ul class="list-unstyled">
+            <li><strong>Ngân hàng:</strong> {{ bank_info.bank_name }}</li>
+            <li><strong>Chủ tài khoản:</strong> {{ bank_info.account_name }}</li>
+            <li><strong>Số tài khoản:</strong> {{ bank_info.account_number }}</li>
+            <li><strong>Chi nhánh:</strong> {{ bank_info.branch }}</li>
+          </ul>
+          <p><strong>Nội dung chuyển khoản:</strong> {{ bank_info.transfer_content }}</p>
+        </div>
+      {% endif %}
+
+      <!-- Nút xác nhận -->
+      <form method="post" action="{% url 'confirm_payment' payment.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="payment_method" value="{{ method }}">
+        <div class="d-grid gap-2 mt-4">
+          <button type="submit" class="btn btn-success btn-lg">
+            <i class="fas fa-check-circle me-2"></i> Tôi đã thanh toán
+          </button>
+          <a href="{% url 'student_payments' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Quay lại
+          </a>
+        </div>
+      </form>
+      {% if method != 'cash' %}
+        <hr>
+        <div class="text-center mt-3">
+        <h6 class="text-muted">⏳ Vui lòng hoàn tất thanh toán trong vòng <span id="countdown">05:00</span></h6>
+        <p class="small text-secondary">Sau khi hết thời gian, bạn cần quay lại trang thanh toán để tạo mã mới.</p>
+        </div>
+
+        <script>
+        let remainingTime = 300;
+        const countdownEl = document.getElementById('countdown');
+        const timer = setInterval(() => {
+            let minutes = Math.floor(remainingTime / 60);
+            let seconds = remainingTime % 60;
+            countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            remainingTime--;
+            if (remainingTime < 0) {
+            clearInterval(timer);
+            countdownEl.textContent = "00:00";
+            alert("⚠️ Hết thời gian thanh toán! Vui lòng quay lại trang hóa đơn để thử lại.");
+            window.location.href = "{% url 'student_payments' %}";
+            }
+        }, 1000);
+        </script>
+        {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}
