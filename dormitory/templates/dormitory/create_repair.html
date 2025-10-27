@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Tạo yêu cầu sửa chữa</h2>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Phòng</label>
+            <input type="text" name="room" class="form-control" required>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Tiêu đề</label>
+            <input type="text" name="title" class="form-control" required>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Mô tả chi tiết</label>
+            <textarea name="description" class="form-control" rows="4" required></textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Gửi yêu cầu</button>
+        <a href="{% url 'student_repairs' %}" class="btn btn-secondary">Hủy</a>
+    </form>
+</div>
+{% endblock %}

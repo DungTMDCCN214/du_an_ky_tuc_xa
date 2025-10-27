@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Cập nhật Trạng thái Sửa chữa</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">{{ repair.title }}</h5>
+        <p><strong>Phòng:</strong> {{ repair.room }}</p>
+        <p><strong>Sinh viên:</strong> 
+            {{ repair.student.get_full_name|default:repair.student.username }}
+        </p>
+        <p><strong>Mô tả:</strong> {{ repair.description }}</p>
+        <p><strong>Trạng thái hiện tại:</strong> 
+            {% if repair.status == 'pending' %}
+                <span class="badge bg-warning">Chờ xử lý</span>
+            {% elif repair.status == 'in_progress' %}
+                <span class="badge bg-info">Đang sửa chữa</span>
+            {% else %}
+                <span class="badge bg-success">Đã hoàn thành</span>
+            {% endif %}
+        </p>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Trạng thái mới</label>
+                <select name="status" class="form-select" required>
+                    <option value="pending" {% if repair.status == 'pending' %}selected{% endif %}>Chờ xử lý</option>
+                    <option value="in_progress" {% if repair.status == 'in_progress' %}selected{% endif %}>Đang sửa chữa</option>
+                    <option value="completed" {% if repair.status == 'completed' %}selected{% endif %}>Đã hoàn thành</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Cập nhật</button>
+            <a href="{% url 'repairs_list' %}" class="btn btn-secondary">Quay lại</a>  <!-- SỬA THÀNH repairs_list -->
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -59,4 +59,13 @@ urlpatterns = [
     path('notifications/mark-all-read/', views.notification_mark_all_read, name='notification_mark_all_read'),
     path('api/notifications/count/', views.notification_count_api, name='notification_count_api'),
     path('api/notifications/dropdown/', views.notification_dropdown_api, name='notification_dropdown_api'),
+
+    path('repairs/', views.admin_repairs, name='repairs_list'),  # ĐỔI TÊN URL
+    path('repairs/<int:repair_id>/update/', views.update_repair_status, name='update_repair_status'),
+    
+    # URLs cho Student
+    path('student/repairs/', views.student_repairs, name='student_repairs'),
+    path('student/repairs/create/', views.create_repair, name='create_repair'),
+
+
 ]

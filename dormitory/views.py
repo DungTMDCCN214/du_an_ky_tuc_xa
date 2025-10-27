@@ -775,3 +775,59 @@ def notification_dropdown_api(request):
         'notifications': notifications_data,
         'unread_count': get_unread_count(request.user)
     })
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import RepairRequest
+
+# Sinh viên xem danh sách yêu cầu của mình
+@login_required
+def student_repairs(request):
+    repairs = RepairRequest.objects.filter(student=request.user)
+    return render(request, 'dormitory/student_repairs.html', {'repairs': repairs})
+
+# Sinh viên tạo yêu cầu mới
+@login_required
+def create_repair(request):
+    if request.method == 'POST':
+        room = request.POST.get('room')
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        
+        RepairRequest.objects.create(
+            student=request.user,
+            room=room,
+            title=title,
+            description=description
+        )
+        return redirect('student_repairs')
+    
+    return render(request, 'dormitory/create_repair.html')
+
+# Admin xem tất cả yêu cầu
+@login_required
+def admin_repairs(request):
+    if not request.user.is_staff:
+        return redirect('student_repairs')
+    
+    repairs = RepairRequest.objects.all()
+    return render(request, 'dormitory/admin_repairs.html', {'repairs': repairs})
+
+# Admin cập nhật trạng thái
+@login_required
+def update_repair_status(request, repair_id):
+    if not request.user.is_staff:
+        return redirect('student_repairs')
+    
+    repair = get_object_or_404(RepairRequest, id=repair_id)
+    
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+        repair.status = new_status
+        repair.save()
+        
+        # LUÔN QUAY VỀ TRANG DANH SÁCH
+        return redirect('repairs_list')
+    
+    return render(request, 'dormitory/update_status.html', {'repair': repair})
