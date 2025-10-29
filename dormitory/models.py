@@ -152,3 +152,26 @@ class Notification(models.Model):
             'booking': '🏠',
         }
         return icons.get(self.notification_type, '📢')
+    
+
+from django.db import models
+from django.conf import settings
+
+class RepairRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Chờ xử lý'),
+        ('in_progress', 'Đang sửa chữa'),
+        ('completed', 'Đã hoàn thành'),
+    )
+    
+    # SỬA: Sử dụng settings.AUTH_USER_MODEL thay vì User
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    room = models.CharField(max_length=20)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.room} - {self.title}"

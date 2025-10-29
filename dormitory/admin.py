@@ -29,7 +29,7 @@ class ContractAdmin(admin.ModelAdmin):
     list_filter = ['status', 'start_date']
     search_fields = ['contract_number', 'student__student_id']
 
-# dormitory/admin.py - THÊM CUỐI FILE
+
 from .models import Notification
 
 @admin.register(Notification)
