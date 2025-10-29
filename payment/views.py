@@ -6,32 +6,53 @@ from django.utils import timezone
 from .models import Payment
 from dormitory.models import Contract, Student
 from .forms import PaymentForm
+from django.db.models import Q, Sum
 
 @login_required
 def payment_list(request):
-    """Danh sách thanh toán"""
-    if request.user.user_type == 'student':
-        student = request.user.student
-        contracts = Contract.objects.filter(student=student)
-        payments = Payment.objects.filter(contract__in=contracts).select_related('contract__student', 'contract__room')
-    else:
-        payments = Payment.objects.all().select_related('contract__student', 'contract__room')
-    
-    # Thống kê
-    total_pending = payments.filter(status='pending').count()
-    total_paid = payments.filter(status='paid').count()
-    total_amount = sum(p.amount for p in payments.filter(status='paid'))
-    
+    search_query = request.GET.get('search', '')
+    selected_status = request.GET.get('status', '')
+
+    today = timezone.now().date()
+
+    payments = Payment.objects.select_related(
+        'contract__student',
+        'contract__room__building'
+    )
+
+    # Lọc theo từ khóa tìm kiếm
+    if search_query:
+        payments = payments.filter(
+            Q(id__icontains=search_query) |
+            Q(contract__student__student_id__icontains=search_query) |
+            Q(contract__student__full_name__icontains=search_query) |
+            Q(contract__room__room_number__icontains=search_query) |
+            Q(contract__room__building__name__icontains=search_query)
+        )
+
+    # Lọc theo trạng thái
+    if selected_status == 'pending':
+        payments = payments.filter(status='pending', due_date__gte=today)
+    elif selected_status == 'paid':
+        payments = payments.filter(status='paid')
+    elif selected_status == 'overdue':
+        payments = payments.filter(status='pending', due_date__lt=today)
+
+    # Thống kê tổng quát
+    stats = {
+        'total_pending': Payment.objects.filter(status='pending').count(),
+        'total_paid': Payment.objects.filter(status='paid').count(),
+        'total_amount': Payment.objects.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0,
+    }
+
     context = {
         'payments': payments,
-        'stats': {
-            'total_pending': total_pending,
-            'total_paid': total_paid,
-            'total_amount': total_amount,
-        }
+        'stats': stats,
+        'today': today,
+        'search_query': search_query,
+        'selected_status': selected_status,
     }
     return render(request, 'payment/payment_list.html', context)
-
 @login_required
 def payment_create(request):
     """Tạo hóa đơn thanh toán (chỉ quản lý)"""

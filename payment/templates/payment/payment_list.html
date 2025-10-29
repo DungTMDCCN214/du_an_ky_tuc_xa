@@ -11,6 +11,41 @@
     {% endif %}
 </div>
 
+<!-- 🔍 SEARCH & FILTER BOX -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-center">
+
+            <!-- Ô tìm kiếm -->
+            <div class="col-md-8">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control"
+                           placeholder="Tìm kiếm theo mã HĐ, mã SV, tên SV, phòng, tòa..."
+                           value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary">🔍 Tìm kiếm</button>
+                </div>
+            </div>
+
+            <!-- Bộ lọc trạng thái -->
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">⚙️ Tất cả trạng thái</option>
+                    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>⏳ Chờ thanh toán</option>
+                    <option value="paid" {% if selected_status == 'paid' %}selected{% endif %}>✅ Đã thanh toán</option>
+                    <option value="overdue" {% if selected_status == 'overdue' %}selected{% endif %}>❌ Quá hạn</option>
+                </select>
+            </div>
+
+            <!-- Nút xóa lọc -->
+            <div class="col-md-1 text-end">
+                {% if search_query or selected_status %}
+                <a href="{% url 'payment_list' %}" class="btn btn-outline-secondary w-100">🔄 Xóa</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- THỐNG KÊ -->
 <div class="row mb-4">
     <div class="col-md-4">
