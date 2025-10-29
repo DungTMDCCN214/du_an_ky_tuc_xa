@@ -806,14 +806,32 @@ def create_repair(request):
     return render(request, 'dormitory/create_repair.html')
 
 # Admin xem tất cả yêu cầu
+
+from django.db.models import Q
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+
 @login_required
 def admin_repairs(request):
     if not request.user.is_staff:
         return redirect('student_repairs')
     
-    repairs = RepairRequest.objects.all()
-    return render(request, 'dormitory/admin_repairs.html', {'repairs': repairs})
+    search_query = request.GET.get('search', '')
+    repairs = RepairRequest.objects.select_related('student').all()
 
+    if search_query:
+        repairs = repairs.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(room__icontains=search_query) |
+            Q(student__username__icontains=search_query)
+        )
+
+    context = {
+        'repairs': repairs,
+        'search_query': search_query,
+    }
+    return render(request, 'dormitory/admin_repairs.html', context)
 # Admin cập nhật trạng thái
 @login_required
 def update_repair_status(request, repair_id):
@@ -831,3 +849,31 @@ def update_repair_status(request, repair_id):
         return redirect('repairs_list')
     
     return render(request, 'dormitory/update_status.html', {'repair': repair})
+from .models import RepairRequest, Room
+from accounts.models import CustomUser
+
+def repairs_list(request):
+    repairs = RepairRequest.objects.all().select_related('room', 'student')
+    rooms = Room.objects.all()
+    students = CustomUser.objects.filter(role='student')
+
+    room_ids = request.GET.getlist('room')
+    student_ids = request.GET.getlist('student')
+    statuses = request.GET.getlist('status')
+
+    if room_ids:
+        repairs = repairs.filter(room_id__in=room_ids)
+    if student_ids:
+        repairs = repairs.filter(student_id__in=student_ids)
+    if statuses:
+        repairs = repairs.filter(status__in=statuses)
+
+    context = {
+        'repairs': repairs,
+        'rooms': rooms,
+        'students': students,
+        'selected_rooms': room_ids,
+        'selected_students': student_ids,
+        'selected_statuses': statuses,
+    }
+    return render(request, 'dormitory/admin_repairs.html', context)

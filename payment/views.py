@@ -373,3 +373,4 @@ def generate_qr_payment(request, payment_id):
     except Exception as e:
         # Trả về ảnh lỗi hoặc redirect
         return redirect('student_payments')
+    

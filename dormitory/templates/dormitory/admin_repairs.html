@@ -1,9 +1,30 @@
 {% extends 'base.html' %}
-
 {% block content %}
-<div class="container">
-    <h2>Quản lý yêu cầu sửa chữa</h2>
-    
+<div class="container mt-4">
+    <h3>📋 Danh sách yêu cầu sửa chữa</h3>
+
+    <!-- SEARCH BOX -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-center">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control"
+                               placeholder="Tìm kiếm theo tiêu đề, mô tả, phòng, sinh viên..."
+                               value="{{ search_query }}">
+                        <button type="submit" class="btn btn-primary">🔍 Tìm kiếm</button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    {% if search_query %}
+                    <a href="{% url 'repairs_list' %}" class="btn btn-outline-secondary">🔄 Xóa tìm kiếm</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DANH SÁCH YÊU CẦU -->
     <div class="list-group">
         {% for repair in repairs %}
         <div class="list-group-item">
@@ -17,22 +38,24 @@
                 <div class="text-end">
                     <p><strong>Trạng thái:</strong> 
                         {% if repair.status == 'pending' %}
-                            <span class="badge bg-warning">Chờ xử lý</span>
+                            <span class="badge bg-warning text-dark">Chờ xử lý</span>
                         {% elif repair.status == 'in_progress' %}
-                            <span class="badge bg-info">Đang sửa chữa</span>
+                            <span class="badge bg-info text-dark">Đang sửa chữa</span>
                         {% else %}
                             <span class="badge bg-success">Đã hoàn thành</span>
                         {% endif %}
                     </p>
                     <a href="{% url 'update_repair_status' repair.id %}" class="btn btn-sm btn-outline-primary">
-                        Cập nhật trạng thái
+                        ✏️ Cập nhật
                     </a>
                 </div>
             </div>
             <small class="text-muted">Ngày tạo: {{ repair.created_at|date:"d/m/Y H:i" }}</small>
         </div>
         {% empty %}
-        <p class="text-muted">Chưa có yêu cầu sửa chữa nào.</p>
+        <div class="text-center text-muted py-4">
+            <p>📭 Không có yêu cầu sửa chữa nào.</p>
+        </div>
         {% endfor %}
     </div>
 </div>
