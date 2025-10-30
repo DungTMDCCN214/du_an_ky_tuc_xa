@@ -5,8 +5,8 @@ from .services import send_payment_reminder
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ['id', 'contract', 'amount', 'payment_method', 'status', 'due_date', 'paid_date']
-    list_filter = ['status', 'payment_method', 'due_date']
+    list_display = ['id', 'contract', 'amount', 'payment_method', 'payment_type', 'status', 'due_date', 'paid_date']
+    list_filter = ['status', 'payment_method', 'payment_type', 'due_date']
     search_fields = ['contract__student__student_id', 'contract__student__full_name']
     actions = ['send_reminder_email']
     

@@ -8,7 +8,13 @@ class Payment(models.Model):
         ('momo', 'Ví MoMo'),
         ('zalopay', 'ZaloPay'),
     )
-    
+
+    PAYMENT_CHOICES = (
+        ('room', 'Tiền phòng'),
+        ('electric', 'Tiền điện'),
+        ('water', 'Tiền nước'),
+    )
+
     STATUS_CHOICES = (
         ('pending', 'Chờ thanh toán'),
         ('paid', 'Đã thanh toán'),
@@ -22,6 +28,13 @@ class Payment(models.Model):
         on_delete=models.CASCADE,
         default=1  # ID của student mặc định
     )
+
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PAYMENT_CHOICES,
+        default='room'
+    )
+
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='cash')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

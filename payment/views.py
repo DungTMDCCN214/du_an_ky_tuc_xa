@@ -125,37 +125,44 @@ def send_reminder(request, pk):
 # THÊM VÀO payment/views.py - CUỐI FILE
 
 
+@login_required
 def student_payments(request):
     """Trang thanh toán dành cho sinh viên"""
     if request.user.user_type != 'student':
         messages.error(request, "Chỉ sinh viên mới có thể truy cập trang này")
         return redirect('home')
-    
+
     try:
         student = request.user.student
-        # Lấy hợp đồng hiện tại của sinh viên
         current_contract = Contract.objects.filter(student=student, status='active').first()
-        
-        # Lấy các hóa đơn của sinh viên
+
+        # Lấy tất cả hóa đơn của sinh viên
         payments = Payment.objects.filter(student=student).select_related('contract__room').order_by('-created_at')
-        
-        # Phân loại hóa đơn
+
+        # Phân loại theo loại thanh toán
+        payments_room = payments.filter(payment_type='room')
+        payments_electric = payments.filter(payment_type='electric')
+        payments_water = payments.filter(payment_type='water')
+
+        # Nhóm trạng thái
         pending_payments = payments.filter(status='pending')
         paid_payments = payments.filter(status='paid')
-        
-        # Tính tổng tiền đang chờ thanh toán
+
         total_pending_amount = sum(p.amount for p in pending_payments)
-        
+
         context = {
             'student': student,
             'current_contract': current_contract,
+            'payments_room': payments_room,
+            'payments_electric': payments_electric,
+            'payments_water': payments_water,
             'pending_payments': pending_payments,
             'paid_payments': paid_payments,
             'total_pending_amount': total_pending_amount,
             'today': timezone.now().date(),
         }
         return render(request, 'payment/student_payments.html', context)
-        
+
     except Student.DoesNotExist:
         messages.error(request, "Vui lòng hoàn thiện hồ sơ sinh viên trước!")
         return redirect('complete_profile')
@@ -394,4 +401,96 @@ def generate_qr_payment(request, payment_id):
     except Exception as e:
         # Trả về ảnh lỗi hoặc redirect
         return redirect('student_payments')
+
+@login_required
+def payment_list(request):
+    search_query = request.GET.get('search', '')
+    selected_status = request.GET.get('status', '')
+    selected_type = request.GET.get('type', '')
+
+    today = timezone.now().date()
+
+    payments = Payment.objects.select_related(
+        'contract__student',
+        'contract__room__building'
+    )
+
+    # Lọc theo từ khóa tìm kiếm
+    if search_query:
+        payments = payments.filter(
+            Q(id__icontains=search_query) |
+            Q(contract__student__student_id__icontains=search_query) |
+            Q(contract__student__full_name__icontains=search_query) |
+            Q(contract__room__room_number__icontains=search_query) |
+            Q(contract__room__building__name__icontains=search_query)
+        )
+
+    # Lọc theo loại thanh toán
+    if selected_type in ['room', 'electric', 'water']:
+        payments = payments.filter(payment_type=selected_type)
+
+    # Lọc theo trạng thái
+    if selected_status == 'pending':
+        payments = payments.filter(status='pending', due_date__gte=today)
+    elif selected_status == 'paid':
+        payments = payments.filter(status='paid')
+    elif selected_status == 'overdue':
+        payments = payments.filter(status='pending', due_date__lt=today)
+
+    # Thống kê tổng quát
+    stats = {
+        'total_pending': Payment.objects.filter(status='pending').count(),
+        'total_paid': Payment.objects.filter(status='paid').count(),
+        'total_amount': Payment.objects.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0,
+    }
+
+    context = {
+        'payments': payments,
+        'stats': stats,
+        'today': today,
+        'search_query': search_query,
+        'selected_status': selected_status,
+        'selected_type': selected_type,
+    }
+    return render(request, 'payment/payment_list.html', context)
+
+@login_required
+def create_electric_payment(request):
+    """Tạo hóa đơn tiền điện"""
+    if request.user.user_type == 'student':
+        messages.error(request, "Bạn không có quyền tạo hóa đơn!")
+        return redirect('payment_list')
+
+    if request.method == 'POST':
+        form = PaymentForm(request.POST)
+        if form.is_valid():
+            payment = form.save(commit=False)
+            payment.payment_type = 'electric'
+            payment.save()
+            messages.success(request, f"Đã tạo hóa đơn tiền điện #{payment.id} thành công!")
+            return redirect('payment_list')
+    else:
+        form = PaymentForm(initial={'payment_type': 'electric'})
     
+    return render(request, 'payment/payment_form.html', {'form': form})
+
+
+@login_required
+def create_water_payment(request):
+    """Tạo hóa đơn tiền nước"""
+    if request.user.user_type == 'student':
+        messages.error(request, "Bạn không có quyền tạo hóa đơn!")
+        return redirect('payment_list')
+
+    if request.method == 'POST':
+        form = PaymentForm(request.POST)
+        if form.is_valid():
+            payment = form.save(commit=False)
+            payment.payment_type = 'water'
+            payment.save()
+            messages.success(request, f"Đã tạo hóa đơn tiền nước #{payment.id} thành công!")
+            return redirect('payment_list')
+    else:
+        form = PaymentForm(initial={'payment_type': 'water'})
+    
+    return render(request, 'payment/payment_form.html', {'form': form})

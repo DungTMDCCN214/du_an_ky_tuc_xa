@@ -1,13 +1,26 @@
-
 from django import forms
 from .models import Payment
 
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ['contract', 'amount', 'payment_method', 'status', 'due_date', 'paid_date', 'transaction_id', 'notes']
+        fields = [
+            'contract',
+            'student',
+            'payment_type',
+            'amount',
+            'payment_method',
+            'status',
+            'due_date',
+            'paid_date',
+            'transaction_id',
+            'notes',
+        ]
+
         widgets = {
             'contract': forms.Select(attrs={'class': 'form-control'}),
+            'student': forms.Select(attrs={'class': 'form-control'}),
+            'payment_type': forms.Select(attrs={'class': 'form-control'}), 
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'payment_method': forms.Select(attrs={'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-control'}),

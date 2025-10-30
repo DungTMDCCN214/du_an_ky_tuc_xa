@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-
 {% block title %}Thanh Toán Trực Tuyến{% endblock %}
 
 {% block content %}
@@ -20,7 +19,7 @@
         </div>
     </div>
 
-    <!-- Thông tin hợp đồng hiện tại -->
+    <!-- Thông tin hợp đồng -->
     {% if current_contract %}
     <div class="row mb-4">
         <div class="col-md-6">
@@ -67,7 +66,7 @@
     </div>
     {% endif %}
 
-    <!-- Hóa đơn đang chờ thanh toán -->
+    <!-- Hóa đơn chờ thanh toán -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -81,6 +80,7 @@
                             <thead>
                                 <tr>
                                     <th>Mã hóa đơn</th>
+                                    <th>Loại</th>
                                     <th>Mô tả</th>
                                     <th>Số tiền</th>
                                     <th>Hạn thanh toán</th>
@@ -92,17 +92,34 @@
                                 {% for payment in pending_payments %}
                                 <tr>
                                     <td>#{{ payment.id }}</td>
-                                    <td>{{ payment.notes }}</td>
+                                    <td>
+                                        {% if payment.payment_type == 'room' %}
+                                            <span class="badge bg-primary">Phòng</span>
+                                        {% elif payment.payment_type == 'electric' %}
+                                            <span class="badge bg-warning text-dark">Điện</span>
+                                        {% elif payment.payment_type == 'water' %}
+                                            <span class="badge bg-info text-white">Nước</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if payment.payment_type == 'room' %}
+                                            Tiền phòng tháng {{ payment.created_at|date:"m/Y" }} - Phòng {{ payment.contract.room.room_number }}
+                                        {% elif payment.payment_type == 'electric' %}
+                                            Tiền điện tháng {{ payment.created_at|date:"m/Y" }} - Phòng {{ payment.contract.room.room_number }}
+                                        {% elif payment.payment_type == 'water' %}
+                                            Tiền nước tháng {{ payment.created_at|date:"m/Y" }} - Phòng {{ payment.contract.room.room_number }}
+                                        {% else %}
+                                            {{ payment.notes }}
+                                        {% endif %}
+                                    </td>
                                     <td class="fw-bold text-danger">{{ payment.amount|floatformat:0 }} VNĐ</td>
                                     <td>
-                                        {{ payment.due_date }}
+                                        {{ payment.due_date|date:"M. d, Y" }}
                                         {% if payment.due_date < today %}
                                         <span class="badge bg-danger ms-1">Quá hạn</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        <span class="badge bg-warning">{{ payment.get_status_display }}</span>
-                                    </td>
+                                    <td><span class="badge bg-warning">{{ payment.get_status_display }}</span></td>
                                     <td>
                                         <a href="{% url 'process_payment' payment.id %}" class="btn btn-success btn-sm">
                                             <i class="fas fa-credit-card"></i> Thanh toán
@@ -139,6 +156,7 @@
                             <thead>
                                 <tr>
                                     <th>Mã hóa đơn</th>
+                                    <th>Loại</th>
                                     <th>Mô tả</th>
                                     <th>Số tiền</th>
                                     <th>Ngày thanh toán</th>
@@ -150,12 +168,29 @@
                                 {% for payment in paid_payments|slice:":5" %}
                                 <tr>
                                     <td>#{{ payment.id }}</td>
-                                    <td>{{ payment.notes }}</td>
+                                    <td>
+                                        {% if payment.payment_type == 'room' %}
+                                            <span class="badge bg-primary">Phòng</span>
+                                        {% elif payment.payment_type == 'electric' %}
+                                            <span class="badge bg-warning text-dark">Điện</span>
+                                        {% elif payment.payment_type == 'water' %}
+                                            <span class="badge bg-info text-white">Nước</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if payment.payment_type == 'room' %}
+                                            Tiền phòng tháng {{ payment.created_at|date:"m/Y" }} - Phòng {{ payment.contract.room.room_number }}
+                                        {% elif payment.payment_type == 'electric' %}
+                                            Tiền điện tháng {{ payment.created_at|date:"m/Y" }} - Phòng {{ payment.contract.room.room_number }}
+                                        {% elif payment.payment_type == 'water' %}
+                                            Tiền nước tháng {{ payment.created_at|date:"m/Y" }} - Phòng {{ payment.contract.room.room_number }}
+                                        {% else %}
+                                            {{ payment.notes }}
+                                        {% endif %}
+                                    </td>
                                     <td class="fw-bold text-success">{{ payment.amount|floatformat:0 }} VNĐ</td>
                                     <td>{{ payment.paid_date|default:"-" }}</td>
-                                    <td>
-                                        <span class="badge bg-info">{{ payment.get_payment_method_display }}</span>
-                                    </td>
+                                    <td><span class="badge bg-info">{{ payment.get_payment_method_display }}</span></td>
                                     <td><code>{{ payment.transaction_id|default:"-" }}</code></td>
                                 </tr>
                                 {% endfor %}
@@ -180,7 +215,7 @@
         </div>
     </div>
 
-    <!-- Thông báo hệ thống -->
+    <!-- Thông báo -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card">
@@ -212,48 +247,16 @@
     </div>
 </div>
 
-<!-- CSS bổ sung -->
+<!-- CSS -->
 <style>
-.card {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    border: 1px solid rgba(0, 0, 0, 0.125);
-}
-
-.card-header {
-    font-weight: 600;
-}
-
-.table th {
-    border-top: none;
-    font-weight: 600;
-    color: #495057;
-}
-
-.btn-success {
-    background-color: #28a745;
-    border-color: #28a745;
-}
-
-.btn-success:hover {
-    background-color: #218838;
-    border-color: #1e7e34;
-}
-
-.badge {
-    font-size: 0.75em;
-}
-
-.text-danger {
-    color: #dc3545 !important;
-}
-
-.text-success {
-    color: #28a745 !important;
-}
-
-.alert {
-    border: none;
-    border-radius: 0.5rem;
-}
+.card { box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+.card-header { font-weight: 600; }
+.table th { border-top: none; font-weight: 600; color: #495057; }
+.btn-success { background-color: #28a745; border-color: #28a745; }
+.btn-success:hover { background-color: #218838; border-color: #1e7e34; }
+.badge { font-size: 0.75em; }
+.text-danger { color: #dc3545 !important; }
+.text-success { color: #28a745 !important; }
+.alert { border: none; border-radius: 0.5rem; }
 </style>
 {% endblock %}
