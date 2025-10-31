@@ -88,8 +88,8 @@
                         <td>{{ student.faculty }}</td>
                         <td>{{ student.course }}</td>
                         <td>
-                            <a href="{% url 'student_edit' student.pk %}" class="btn btn-sm btn-outline-primary">✏️ Sửa</a>
-                            <a href="{% url 'student_delete' student.pk %}" class="btn btn-sm btn-outline-danger">🗑️ Xóa</a>
+                            <a href="{% url 'student_edit' student.pk %}" class="btn btn-sm btn-outline-primary">✏️</a>
+                            <a href="{% url 'student_delete' student.pk %}" class="btn btn-sm btn-outline-danger">🗑️</a>
                         </td>
                     </tr>
                     {% empty %}

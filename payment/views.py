@@ -10,9 +10,9 @@ from django.db.models import Q, Sum
 
 @login_required
 def payment_list(request):
+    """Danh sách hóa đơn thanh toán"""
     search_query = request.GET.get('search', '')
     selected_status = request.GET.get('status', '')
-
     today = timezone.now().date()
 
     payments = Payment.objects.select_related(
@@ -20,14 +20,18 @@ def payment_list(request):
         'contract__room__building'
     )
 
-    # Lọc theo từ khóa tìm kiếm
+    # Nếu là sinh viên => chỉ xem hóa đơn của mình
+    if getattr(request.user, 'user_type', None) == 'student' and not (request.user.is_staff or request.user.is_superuser):
+        payments = payments.filter(contract__student__user=request.user)
+
+    # Lọc theo tìm kiếm
     if search_query:
         payments = payments.filter(
-            Q(id__icontains=search_query) |
-            Q(contract__student__student_id__icontains=search_query) |
-            Q(contract__student__full_name__icontains=search_query) |
-            Q(contract__room__room_number__icontains=search_query) |
-            Q(contract__room__building__name__icontains=search_query)
+            Q(id__icontains=search_query)
+            | Q(contract__student__student_id__icontains=search_query)
+            | Q(contract__student__full_name__icontains=search_query)
+            | Q(contract__room__room_number__icontains=search_query)
+            | Q(contract__room__building__name__icontains=search_query)
         )
 
     # Lọc theo trạng thái
@@ -53,45 +57,50 @@ def payment_list(request):
         'selected_status': selected_status,
     }
     return render(request, 'payment/payment_list.html', context)
+
 @login_required
 def payment_create(request):
-    """Tạo hóa đơn thanh toán (chỉ quản lý)"""
-    if request.user.user_type == 'student':
+    """Tạo hóa đơn thanh toán (chỉ quản lý hoặc nhân viên)"""
+    if getattr(request.user, 'user_type', None) == 'student' and not (request.user.is_staff or request.user.is_superuser):
         messages.error(request, "Bạn không có quyền tạo hóa đơn!")
         return redirect('payment_list')
-    
+
     if request.method == 'POST':
         form = PaymentForm(request.POST)
         if form.is_valid():
-            payment = form.save()
-            messages.success(request, f"Đã tạo hóa đơn #{payment.id} thành công!")
+            payment = form.save(commit=False)
+            payment.save()
+            messages.success(request, f"💾 Đã tạo hóa đơn #{payment.id} thành công!")
             return redirect('payment_list')
     else:
         form = PaymentForm()
-    
+
     return render(request, 'payment/payment_form.html', {'form': form})
+
 
 @login_required
 def payment_detail(request, pk):
     """Chi tiết thanh toán"""
     payment = get_object_or_404(Payment, pk=pk)
-    
-    # Kiểm tra quyền xem
-    if request.user.user_type == 'student' and payment.contract.student.user != request.user:
-        messages.error(request, "Bạn không có quyền xem hóa đơn này!")
-        return redirect('payment_list')
-    
+
+    # Nếu là sinh viên và không phải staff/superuser => chỉ xem hóa đơn của mình
+    if getattr(request.user, 'user_type', None) == 'student' and not (request.user.is_staff or request.user.is_superuser):
+        if payment.contract.student.user != request.user:
+            messages.error(request, "Bạn không có quyền xem hóa đơn này!")
+            return redirect('payment_list')
+
     return render(request, 'payment/payment_detail.html', {'payment': payment})
 
-@login_required 
+
+@login_required
 def payment_update(request, pk):
-    """Cập nhật trạng thái thanh toán (chỉ quản lý)"""
-    if request.user.user_type == 'student':
-        messages.error(request, "Bạn không có quyền cập nhật thanh toán!")
+    """Cập nhật hóa đơn (chỉ quản lý hoặc nhân viên)"""
+    if getattr(request.user, 'user_type', None) == 'student' and not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Bạn không có quyền cập nhật hóa đơn!")
         return redirect('payment_list')
-    
+
     payment = get_object_or_404(Payment, pk=pk)
-    
+
     if request.method == 'POST':
         form = PaymentForm(request.POST, instance=payment)
         if form.is_valid():
@@ -100,7 +109,7 @@ def payment_update(request, pk):
             return redirect('payment_list')
     else:
         form = PaymentForm(instance=payment)
-    
+
     return render(request, 'payment/payment_form.html', {'form': form})
 
 # payment/views.py - THÊM FUNCTION

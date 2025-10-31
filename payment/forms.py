@@ -6,7 +6,6 @@ class PaymentForm(forms.ModelForm):
         model = Payment
         fields = [
             'contract',
-            'student',
             'payment_type',
             'amount',
             'payment_method',
@@ -19,8 +18,7 @@ class PaymentForm(forms.ModelForm):
 
         widgets = {
             'contract': forms.Select(attrs={'class': 'form-control'}),
-            'student': forms.Select(attrs={'class': 'form-control'}),
-            'payment_type': forms.Select(attrs={'class': 'form-control'}), 
+            'payment_type': forms.Select(attrs={'class': 'form-control'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'payment_method': forms.Select(attrs={'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-control'}),

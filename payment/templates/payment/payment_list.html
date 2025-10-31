@@ -4,21 +4,13 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>💰 Quản lý Thanh toán</h1>
-
-    {% if user.user_type != 'student' %}
-    <div class="btn-group">
-        <a href="{% url 'payment_create' %}" class="btn btn-primary">➕ Tiền phòng</a>
-        <a href="{% url 'create_electric_payment' %}" class="btn btn-outline-primary">⚡ Tiền điện</a>
-        <a href="{% url 'create_water_payment' %}" class="btn btn-outline-primary">💧 Tiền nước</a>
-    </div>
-    {% endif %}
+    <a href="{% url 'payment_create' %}" class="btn btn-primary">➕ Tạo Hóa đơn</a>
 </div>
 
 <!-- 🔍 SEARCH & FILTER BOX -->
 <div class="card mb-4">
     <div class="card-body">
         <form method="get" class="row g-3 align-items-center">
-            <!-- Ô tìm kiếm -->
             <div class="col-md-6">
                 <div class="input-group">
                     <input type="text" name="search" class="form-control"
@@ -27,8 +19,6 @@
                     <button type="submit" class="btn btn-primary">🔍 Tìm</button>
                 </div>
             </div>
-
-            <!-- Bộ lọc loại thanh toán -->
             <div class="col-md-3">
                 <select name="type" class="form-select">
                     <option value="">📦 Tất cả loại thanh toán</option>
@@ -37,8 +27,6 @@
                     <option value="water" {% if selected_type == 'water' %}selected{% endif %}>💧 Tiền nước</option>
                 </select>
             </div>
-
-            <!-- Bộ lọc trạng thái -->
             <div class="col-md-2">
                 <select name="status" class="form-select">
                     <option value="">⚙️ Trạng thái</option>
@@ -47,8 +35,6 @@
                     <option value="overdue" {% if selected_status == 'overdue' %}selected{% endif %}>❌ Quá hạn</option>
                 </select>
             </div>
-
-            <!-- Nút reset -->
             <div class="col-md-1">
                 {% if search_query or selected_status or selected_type %}
                 <a href="{% url 'payment_list' %}" class="btn btn-outline-secondary w-100">🔄</a>
