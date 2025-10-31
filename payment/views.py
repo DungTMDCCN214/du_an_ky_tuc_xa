@@ -7,24 +7,23 @@ from .models import Payment
 from dormitory.models import Contract, Student
 from .forms import PaymentForm
 from django.db.models import Q, Sum
+from django.core.paginator import Paginator
 
 @login_required
 def payment_list(request):
-    """Danh sách hóa đơn thanh toán"""
+    """Danh sách hóa đơn với tìm kiếm, lọc và phân trang"""
     search_query = request.GET.get('search', '')
     selected_status = request.GET.get('status', '')
+    selected_type = request.GET.get('type', '')
     today = timezone.now().date()
 
+    # Lấy tất cả hóa đơn
     payments = Payment.objects.select_related(
         'contract__student',
         'contract__room__building'
-    )
+    ).order_by('-id')
 
-    # Nếu là sinh viên => chỉ xem hóa đơn của mình
-    if getattr(request.user, 'user_type', None) == 'student' and not (request.user.is_staff or request.user.is_superuser):
-        payments = payments.filter(contract__student__user=request.user)
-
-    # Lọc theo tìm kiếm
+    #  Lọc theo từ khóa
     if search_query:
         payments = payments.filter(
             Q(id__icontains=search_query)
@@ -34,7 +33,7 @@ def payment_list(request):
             | Q(contract__room__building__name__icontains=search_query)
         )
 
-    # Lọc theo trạng thái
+    # Lọc trạng thái
     if selected_status == 'pending':
         payments = payments.filter(status='pending', due_date__gte=today)
     elif selected_status == 'paid':
@@ -42,20 +41,32 @@ def payment_list(request):
     elif selected_status == 'overdue':
         payments = payments.filter(status='pending', due_date__lt=today)
 
-    # Thống kê tổng quát
+    #  Lọc loại thanh toán
+    if selected_type:
+        payments = payments.filter(payment_type=selected_type)
+
+    #  Thống kê
     stats = {
         'total_pending': Payment.objects.filter(status='pending').count(),
         'total_paid': Payment.objects.filter(status='paid').count(),
         'total_amount': Payment.objects.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0,
     }
 
+    #  PHÂN TRANG
+    paginator = Paginator(payments, 10) 
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        'payments': payments,
+        'payments': page_obj.object_list,
+        'page_obj': page_obj,             
         'stats': stats,
         'today': today,
         'search_query': search_query,
         'selected_status': selected_status,
+        'selected_type': selected_type,
     }
+
     return render(request, 'payment/payment_list.html', context)
 
 @login_required
@@ -70,7 +81,7 @@ def payment_create(request):
         if form.is_valid():
             payment = form.save(commit=False)
             payment.save()
-            messages.success(request, f"💾 Đã tạo hóa đơn #{payment.id} thành công!")
+            messages.success(request, f"Đã tạo hóa đơn #{payment.id} thành công!")
             return redirect('payment_list')
     else:
         form = PaymentForm()
@@ -126,9 +137,9 @@ def send_reminder(request, pk):
     payment = get_object_or_404(Payment, pk=pk)
     
     if send_payment_reminder(payment, request):
-        messages.success(request, f'✅ Đã gửi email nhắc nhở cho HĐ #{payment.id}!')
+        messages.success(request, f' Đã gửi email nhắc nhở cho HĐ #{payment.id}!')
     else:
-        messages.error(request, '❌ Gửi email thất bại!')
+        messages.error(request, 'Gửi email thất bại!')
     
     return redirect('admin:payment_payment_changelist')
 # THÊM VÀO payment/views.py - CUỐI FILE
@@ -411,57 +422,6 @@ def generate_qr_payment(request, payment_id):
         # Trả về ảnh lỗi hoặc redirect
         return redirect('student_payments')
 
-@login_required
-def payment_list(request):
-    search_query = request.GET.get('search', '')
-    selected_status = request.GET.get('status', '')
-    selected_type = request.GET.get('type', '')
-
-    today = timezone.now().date()
-
-    payments = Payment.objects.select_related(
-        'contract__student',
-        'contract__room__building'
-    )
-
-    # Lọc theo từ khóa tìm kiếm
-    if search_query:
-        payments = payments.filter(
-            Q(id__icontains=search_query) |
-            Q(contract__student__student_id__icontains=search_query) |
-            Q(contract__student__full_name__icontains=search_query) |
-            Q(contract__room__room_number__icontains=search_query) |
-            Q(contract__room__building__name__icontains=search_query)
-        )
-
-    # Lọc theo loại thanh toán
-    if selected_type in ['room', 'electric', 'water']:
-        payments = payments.filter(payment_type=selected_type)
-
-    # Lọc theo trạng thái
-    if selected_status == 'pending':
-        payments = payments.filter(status='pending', due_date__gte=today)
-    elif selected_status == 'paid':
-        payments = payments.filter(status='paid')
-    elif selected_status == 'overdue':
-        payments = payments.filter(status='pending', due_date__lt=today)
-
-    # Thống kê tổng quát
-    stats = {
-        'total_pending': Payment.objects.filter(status='pending').count(),
-        'total_paid': Payment.objects.filter(status='paid').count(),
-        'total_amount': Payment.objects.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0,
-    }
-
-    context = {
-        'payments': payments,
-        'stats': stats,
-        'today': today,
-        'search_query': search_query,
-        'selected_status': selected_status,
-        'selected_type': selected_type,
-    }
-    return render(request, 'payment/payment_list.html', context)
 
 @login_required
 def create_electric_payment(request):

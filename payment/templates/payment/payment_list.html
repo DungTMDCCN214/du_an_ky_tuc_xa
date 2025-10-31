@@ -14,11 +14,12 @@
             <div class="col-md-6">
                 <div class="input-group">
                     <input type="text" name="search" class="form-control"
-                        placeholder="Tìm theo mã HĐ, mã SV, tên SV, phòng, tòa..."
-                        value="{{ search_query }}">
+                           placeholder="Tìm theo mã HĐ, mã SV, tên SV, phòng, tòa..."
+                           value="{{ search_query }}">
                     <button type="submit" class="btn btn-primary">🔍 Tìm</button>
                 </div>
             </div>
+
             <div class="col-md-3">
                 <select name="type" class="form-select">
                     <option value="">📦 Tất cả loại thanh toán</option>
@@ -27,6 +28,7 @@
                     <option value="water" {% if selected_type == 'water' %}selected{% endif %}>💧 Tiền nước</option>
                 </select>
             </div>
+
             <div class="col-md-2">
                 <select name="status" class="form-select">
                     <option value="">⚙️ Trạng thái</option>
@@ -35,6 +37,7 @@
                     <option value="overdue" {% if selected_status == 'overdue' %}selected{% endif %}>❌ Quá hạn</option>
                 </select>
             </div>
+
             <div class="col-md-1">
                 {% if search_query or selected_status or selected_type %}
                 <a href="{% url 'payment_list' %}" class="btn btn-outline-secondary w-100">🔄</a>
@@ -72,14 +75,20 @@
     </div>
 </div>
 
+<!-- DANH SÁCH HÓA ĐƠN -->
 <div class="card">
-    <div class="card-header bg-light">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="mb-0">📋 Danh sách hóa đơn</h5>
+        {% if page_obj %}
+        <span class="badge bg-secondary">
+            Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} • Tổng: {{ page_obj.paginator.count }} hóa đơn
+        </span>
+        {% endif %}
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
+            <table class="table table-striped align-middle">
+                <thead class="table-dark">
                     <tr>
                         <th>Mã HĐ</th>
                         <th>Sinh viên</th>
@@ -93,7 +102,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for payment in payments %}
+                    {% for payment in page_obj %}
+
                     <tr>
                         <td><strong>#{{ payment.id }}</strong></td>
                         <td>
@@ -106,7 +116,7 @@
                         <td>
                             {{ payment.due_date|date:"d/m/Y" }}
                             {% if payment.due_date < today %}
-                            <span class="badge bg-danger">Quá hạn</span>
+                                <span class="badge bg-danger">Quá hạn</span>
                             {% endif %}
                         </td>
                         <td>
@@ -127,7 +137,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center py-4">
+                        <td colspan="9" class="text-center py-4">
                             <p class="text-muted">📭 Chưa có hóa đơn nào</p>
                             {% if user.user_type != 'student' %}
                             <a href="{% url 'payment_create' %}" class="btn btn-sm btn-primary">Tạo hóa đơn đầu tiên</a>
@@ -138,6 +148,43 @@
                 </tbody>
             </table>
         </div>
-    </div>
+<!-- PHÂN TRANG -->
+{% if page_obj.paginator.num_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">« Đầu</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹ Trước</a>
+            </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Tiếp ›</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Cuối »</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+
+<div class="text-center text-muted mt-2">
+    Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 
+    • {{ page_obj.paginator.count }} hóa đơn
 </div>
+{% endif %}
 {% endblock %}

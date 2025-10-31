@@ -323,7 +323,6 @@ def student_delete(request, pk):
     return render(request, 'dormitory/student_confirm_delete.html', {'student': student})
 
 
-# dormitory/views.py - THÊM CUỐI FILE
 from .forms import RoomForm, BuildingForm, StudentForm, ContractForm
 
 def contract_list(request):
