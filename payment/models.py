@@ -1,5 +1,5 @@
 from django.db import models
-from dormitory.models import Contract
+from dormitory.models import Contract, Student
 
 class Payment(models.Model):
     PAYMENT_METHODS = (
@@ -23,6 +23,7 @@ class Payment(models.Model):
     )
 
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
     payment_type = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='room')
     amount = models.DecimalField(max_digits=12, decimal_places=0)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='cash')
